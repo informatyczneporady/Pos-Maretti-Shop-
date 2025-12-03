@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POS Maretti</title>
+<style>
+body{font-family:Arial;margin:0;background:#f2f3f7;}
+.login{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;}
+.box{background:#fff;padding:20px;border-radius:12px;width:90%;max-width:350px;}
+button{padding:12px;border:none;border-radius:8px;background:#006eff;color:#fff;width:100%;font-size:16px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+ <div class="box">
+  <h2>Maretti Admin</h2>
+  <input id="pass" type="password" placeholder="Hasło 1312" style="width:100%;padding:12px;font-size:16px;border-radius:8px;border:1px solid #ccc;">
+  <br><br>
+  <button onclick="auth()">Zaloguj</button>
+  <p id="error" style="color:red;display:none;text-align:center;">Błędne hasło</p>
+ </div>
+</div>
+
+<div id="app" style="display:none;padding:20px;">
+ <h1>POS Maretti</h1>
+ <p>System gotowy — możesz go rozbudować.</p>
+</div>
+
+<script>
+function auth(){
+ const p=document.getElementById('pass').value;
+ if(p==='1312'){
+   document.getElementById('login').remove();
+   document.getElementById('app').style.display='block';
+ } else {
+   document.getElementById('error').style.display='block';
+ }
+}
+</script>
+
+</body>
+</html>
