@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Telegram POS Mini — Maretti</title>
+<style>
+  :root{--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;--accent:#06b6d4}
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Arial;background:linear-gradient(180deg,#071226 0%, #071726 100%);color:#e6eef6}
+  .wrap{max-width:1100px;margin:18px auto;padding:18px}
+  header{display:flex;gap:12px;align-items:center}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));padding:14px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+  button{background:var(--accent);border:0;padding:8px 12px;border-radius:8px;color:#02121a;font-weight:600}
+  .muted{color:var(--muted)}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:12px;margin-top:12px}
+  input,select,textarea{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;width:100%}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:6px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.03)}
+  .small{font-size:13px}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px;border-radius:8px;color:inherit}
+  .topbar{display:flex;gap:8px;align-items:center;margin-top:8px}
+  footer{margin-top:18px;color:var(--muted);font-size:13px}
+  .hidden{display:none}
+  .flex{display:flex;gap:8px;align-items:center}
+  .badge{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px}
+  .danger{background:#ff5757;color:#200}
+  .ok{background:#8ef5c6;color:#032}
+  .panel{max-height:60vh;overflow:auto;padding:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div style="flex:1">
+      <h1 class="card" style="display:inline-block;padding:10px 14px">Telegram POS Mini — Maretti</h1>
+      <div class="muted small">Darmowy, single-file WebApp (localStorage). Zawiera POS, magazyn, CRM, program lojalnościowy, dostawców i więcej.</div>
+    </div>
+    <div>
+      <button id="openSettings">Ustawienia</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <main class="card">
+      <div class="topbar">
+        <div class="badge">Zalogowany jako <strong id="userLabel">Maretti Admin</strong></div>
+        <div class="muted small">Kasa: <span id="tillState">Zamknięta</span></div>
+        <div style="margin-left:auto" class="flex">
+          <button id="openTillBtn" class="btn-ghost small">Otwórz kasę</button>
+          <button id="closeTillBtn" class="btn-ghost small hidden">Zamknij kasę</button>
+          <button id="newOrderBtn" class="btn-ghost small">Nowe zamówienie</button>
+        </div>
+      </div>
+
+      <section id="posArea" class="panel" style="margin-top:12px">
+        <!-- POS UI -->
+        <div id="orderScreen">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <input id="productSearch" placeholder="Szukaj produktu / SKU" />
+            <select id="categoryFilter"></select>
+            <button id="addQuickProduct" class="btn-ghost small">Dodaj ręcznie</button>
+          </div>
+
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <div class="card small panel" id="productsList"></div>
+            </div>
+            <aside style="width:360px">
+              <div class="card small">
+                <h3>Koszyk</h3>
+                <table><thead><tr><th>Produkt</th><th>ilość</th><th>razem</th></tr></thead><tbody id="cartItems"></tbody></table>
+                <div style="display:flex;justify-content:space-between;margin-top:8px"><div>Rabat:</div><div><input id="orderDiscount" class="small" placeholder="0% lub 10zł"/></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px"><div>Punkty klienta:</div><div id="loyaltyBalance">0</div></div>
+                <div style="margin-top:8px;display:flex;gap:8px;align-items:center"><select id="paymentMethod"></select><button id="payBtn">Zapłać</button></div>
+                <div style="margin-top:8px" class="muted small">Suma: <strong id="orderTotal">0.00 zł</strong></div>
+                <div style="margin-top:8px"><button id="returnBtn" class="btn-ghost small">Zwrót</button></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section style="margin-top:12px">
+        <h3 class="small">Szybkie akcje</h3>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="exportData" class="btn-ghost small">Eksportuj JSON</button>
+          <button id="importData" class="btn-ghost small">Importuj JSON</button>
+          <input id="importFile" type="file" accept="application/json" class="hidden"/>
+          <button id="clearAll" class="btn-ghost small danger">Usuń wszystkie dane</button>
+        </div>
+      </section>
+
+    </main>
+
+    <aside>
+      <div class="card panel">
+        <h3>Administracja</h3>
+        <div style="margin-top:8px">
+          <button id="manageProducts" class="btn-ghost small">Produkty</button>
+          <button id="manageStock" class="btn-ghost small">Magazyn</button>
+          <button id="manageClients" class="btn-ghost small">Klienci</button>
+          <button id="manageSuppliers" class="btn-ghost small">Dostawcy</button>
+          <button id="managePromos" class="btn-ghost small">Promocje</button>
+          <button id="managePayments" class="btn-ghost small">Metody płatności</button>
+        </div>
+        <hr/>
+        <div style="margin-top:8px"><strong>Ustawienia lojalności</strong>
+          <div class="small muted">20 zł = 100 pkt ; 100 pkt = 2.50 zł</div>
+          <div style="display:flex;gap:6px;margin-top:6px"><input id="pointsPerCurrency" placeholder="zł per 100pkt"/><input id="currencyPerPoints" placeholder="pt to zł (100pt)"/></div>
+          <div style="margin-top:6px"><button id="saveLoyalty" class="btn-ghost small">Zapisz</button></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;padding:10px">
+        <h4>Info</h4>
+        <div class="muted small">Login: <strong>Maretti Admin</strong> (pole auto wypełnione). Hasło: <strong>1312</strong></div>
+        <div class="muted small" style="margin-top:6px">Dane przechowywane lokalnie w przeglądarce. Aby działało 24/7 na iPhone: hostuj plik (np. GitHub Pages) lub zapisz jako PWA / "Add to Home Screen" z Safari.</div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="muted small">Potrzebujesz integracji z Telegram Bot (Web App) lub hosting? Mogę pomóc z instrukcjami.</footer>
+</div>
+
+<!-- Modals & hidden managers -->
+<div id="loginModal" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)">
+  <div class="card" style="width:420px;padding:18px">
+    <h2>Zaloguj się</h2>
+    <div class="small muted">Użytkownik automatycznie ustawiony: <strong>Maretti Admin</strong></div>
+    <div style="margin-top:8px">Hasło:<input id="pwd" type="password"/></div>
+    <div style="margin-top:8px;display:flex;justify-content:flex-end"><button id="loginBtn">Zaloguj</button></div>
+    <div id="loginMsg" class="muted small" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="editorModal" class="hidden" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)">
+  <div class="card" style="width:900px;padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="editorTitle">Edytuj</h3><button id="closeEditor">Zamknij</button></div>
+    <div id="editorBody" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script>
+/* Simple single-file POS app using localStorage. Not production; intended as free local solution. */
+const STORAGE_KEY='tgpos_maretti_v1';
+let state = {products:[],clients:[],suppliers:[],payments:[{id:'cash',name:'Gotówka'},{id:'card',name:'Karta'}],promos:[],orders:[],till:{open:false,cash:0}};
+// default loyalty
+let loyaltyConfig={zlotyPer100Pts:20, centsPer100Pts:2.50};
+
+// helpers
+const $ = id=>document.getElementById(id);
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify({state,loyaltyConfig}));}
+function load(){const raw=localStorage.getItem(STORAGE_KEY);if(raw){try{const o=JSON.parse(raw);state=o.state||state;loyaltyConfig=o.loyaltyConfig||loyaltyConfig;}catch(e){} }}
+load();
+
+// seed if empty
+if(state.products.length===0){state.products.push({id:'p1',sku:'CUS-ESP',name:'Espresso 30ml',price:6.00,stock:50,unit:'szt',category:'Napoje'});
+state.products.push({id:'p2',sku:'CUS-LAT',name:'Latte 250ml',price:12.00,stock:30,unit:'szt',category:'Napoje'});
+save();}
+
+let currentOrder={items:[],discount:0,clientId:null,isReturn:false};
+
+// UI init
+function refreshCategoryFilter(){const sel=$('categoryFilter');sel.innerHTML='';const cats=['Wszystkie',...new Set(state.products.map(p=>p.category))];cats.forEach(c=>{const opt=document.createElement('option');opt.value=c;opt.textContent=c;sel.appendChild(opt)});
+}
+function renderProducts(filter=''){
+  const out=$('productsList');out.innerHTML='';const q=filter.toLowerCase();state.products.forEach(p=>{
+    if(q && !(p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q))) return;
+    const row=document.createElement('div');row.style.display='flex';row.style.justifyContent='space-between';row.style.alignItems='center';row.style.padding='6px';
+    row.innerHTML=`<div><strong>${p.name}</strong><div class='muted small'>SKU:${p.sku||'-'} • ${p.category||'-'} • ${p.stock} ${p.unit||''}</div></div><div style='display:flex;gap:6px;align-items:center'><input style='width:70px' type='number' value='1' min='0.01' step='1' id='qty_${p.id}'/><button class='btn-ghost small' data-id='${p.id}'>Dodaj</button></div>`;
+    out.appendChild(row);
+  });
+  out.querySelectorAll('button[data-id]').forEach(b=>{b.addEventListener('click',e=>{const id=b.dataset.id;const qty=parseFloat($('qty_'+id).value)||1;addToCart(id,qty);});});
+}
+function addToCart(id,qty){const p=state.products.find(x=>x.id===id);if(!p){alert('Produkt nie znaleziony');return;}currentOrder.items.push({productId:p.id,name:p.name,price:p.price,qty:qty,unit:p.unit});renderCart();}
+function renderCart(){const tbody=$('cartItems');tbody.innerHTML='';let total=0;currentOrder.items.forEach((it,idx)=>{const tr=document.createElement('tr');const line=it.price*it.qty;total+=line;tr.innerHTML=`<td>${it.name}</td><td><input style='width:60px' data-idx='${idx}' class='qtyedit' value='${it.qty}'/></td><td>${(line).toFixed(2)} zł <button data-idx='${idx}' class='remove small'>x</button></td>`;tbody.appendChild(tr);} );
+  tbody.querySelectorAll('.qtyedit').forEach(i=>i.addEventListener('change',e=>{const idx=e.target.dataset.idx;currentOrder.items[idx].qty=parseFloat(e.target.value)||0;renderCart();}));
+  tbody.querySelectorAll('.remove').forEach(b=>b.addEventListener('click',e=>{currentOrder.items.splice(parseInt(b.dataset.idx),1);renderCart();}));
+  // discount parse
+  let discVal=$('orderDiscount').value.trim(); let disc=0;
+  if(discVal.endsWith('%')){disc=total*(parseFloat(discVal)/100);} else if(discVal.endsWith('z')||discVal.endsWith('zł')){disc=parseFloat(discVal)||0;} else if(discVal){if(discVal.includes('%')) disc=total*(parseFloat(discVal)/100); else disc=parseFloat(discVal)||0}
+  const final=total-disc; $('orderTotal').textContent=final.toFixed(2)+' zł';
+}
+
+function populatePaymentMethods(){const sel=$('paymentMethod');sel.innerHTML='';state.payments.forEach(p=>{const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.name;sel.appendChild(opt)});
+}
+
+// orders
+$('payBtn').addEventListener('click',()=>{if(!state.till.open){alert('Otwórz kasę przed sprzedażą');return;} if(currentOrder.items.length===0){alert('Brak produktów');return;} // apply stock
+  let total=0;currentOrder.items.forEach(it=>{const p=state.products.find(x=>x.id===it.productId); if(!p) return; p.stock = (parseFloat(p.stock)||0) - parseFloat(it.qty); total += it.qty*it.price;});
+  // loyalty points gain: 20 zł = 100 pts -> points = total / 20 * 100
+  const ptsGained = Math.floor(total / loyaltyConfig.zlotyPer100Pts * 100);
+  const orderRecord={id:'o'+Date.now(),items:currentOrder.items,total:total,discount:$('orderDiscount').value||0,paidWith:$('paymentMethod').value,ptsGained:ptsGained,date:new Date().toISOString(),tillOpenAt:state.till.open};
+  state.orders.push(orderRecord); save(); alert('Sprzedano. Punkty zdobyte: '+ptsGained);
+  currentOrder={items:[],discount:0}; renderCart(); renderProducts($('productSearch').value);
+});
+
+// returns
+$('returnBtn').addEventListener('click',()=>{const id=prompt('Podaj id zamówienia do zwrotu (np. o123456789)'); if(!id) return; const o=state.orders.find(x=>x.id===id); if(!o){alert('Nie znaleziono');return;} // restock
+  o.items.forEach(it=>{const p=state.products.find(x=>x.id===it.productId); if(p) p.stock = (parseFloat(p.stock)||0)+parseFloat(it.qty);}); save(); alert('Zwrócono zamówienie'); renderProducts($('productSearch').value);
+});
+
+// manage buttons
+$('manageProducts').addEventListener('click',()=>{openEditor('Produkty', renderProductsManager)});
+$('manageStock').addEventListener('click',()=>{openEditor('Magazyn', renderStockManager)});
+$('manageClients').addEventListener('click',()=>{openEditor('Klienci', renderClientsManager)});
+$('manageSuppliers').addEventListener('click',()=>{openEditor('Dostawcy', renderSuppliersManager)});
+$('managePromos').addEventListener('click',()=>{openEditor('Promocje', renderPromosManager)});
+$('managePayments').addEventListener('click',()=>{openEditor('Metody płatności', renderPaymentsManager)});
+
+function openEditor(title,fn){$('editorTitle').textContent=title; $('editorBody').innerHTML=''; $('editorModal').classList.remove('hidden'); fn();}
+$('closeEditor').addEventListener('click',()=>{$('editorModal').classList.add('hidden'); save(); renderProducts($('productSearch').value); populatePaymentMethods(); refreshCategoryFilter();});
+
+function renderProductsManager(){const b=$('editorBody'); b.innerHTML=`<div style='display:flex;gap:8px'><div style='flex:1'><h4>Lista</h4><div id='prodList'></div></div><div style='width:360px'><h4>Dodaj / Edytuj</h4><div id='prodForm'></div></div></div>`;
+  const list=b.querySelector('#prodList'); const form=b.querySelector('#prodForm'); function redraw(){list.innerHTML=''; state.products.forEach(p=>{const d=document.createElement('div');d.className='card small';d.style.marginBottom='6px';d.innerHTML=`<strong>${p.name}</strong><div class='muted small'>SKU:${p.sku} • ${p.category} • ${p.stock} ${p.unit}</div><div style='margin-top:6px'><button class='btn-ghost small' data-id='${p.id}'>Edytuj</button> <button class='btn-ghost small' data-del='${p.id}'>Usuń</button></div>`; list.appendChild(d);});
+    list.querySelectorAll('[data-id]').forEach(x=>x.addEventListener('click',e=>{const id=e.target.dataset.id; const p=state.products.find(z=>z.id===id); fillForm(p);}));
+    list.querySelectorAll('[data-del]').forEach(x=>x.addEventListener('click',e=>{if(confirm('Usuń produkt?')){state.products=state.products.filter(z=>z.id!==e.target.dataset.del); redraw();}}));
+  }
+  function fillForm(p){form.innerHTML=`<div><label>Nazwa</label><input id='pf_name' value='${p.name||''}'/></div><div><label>SKU</label><input id='pf_sku' value='${p.sku||''}'/></div><div><label>Cena</label><input id='pf_price' value='${p.price||0}'/></div><div><label>Magazyn</label><input id='pf_stock' value='${p.stock||0}'/></div><div><label>Jednostka</label><input id='pf_unit' value='${p.unit||"szt"}'/></div><div><label>Kategoria</label><input id='pf_cat' value='${p.category||""}'/></div><div style='margin-top:6px'><button id='saveProd' class='btn-ghost small'>Zapisz</button></div>`;
+    $('saveProd').addEventListener('click',()=>{p.name=$('pf_name').value;p.sku=$('pf_sku').value;p.price=parseFloat($('pf_price').value)||0;p.stock=parseFloat($('pf_stock').value)||0;p.unit=$('pf_unit').value;p.category=$('pf_cat').value; redraw();});
+  }
+  // new
+  form.innerHTML=`<div><label>Nazwa</label><input id='new_name'/></div><div><label>SKU</label><input id='new_sku'/></div><div><label>Cena</label><input id='new_price' value='0'/></div><div><label>Magazyn</label><input id='new_stock' value='0'/></div><div><label>Jednostka</label><input id='new_unit' value='szt'/></div><div><label>Kategoria</label><input id='new_cat'/></div><div style='margin-top:6px'><button id='addProd' class='btn-ghost small'>Dodaj produkt</button></div>`;
+  $('addProd').addEventListener('click',()=>{const p={id:'p'+Date.now(),sku:$('new_sku').value,name:$('new_name').value,price:parseFloat($('new_price').value)||0,stock:parseFloat($('new_stock').value)||0,unit:$('new_unit').value,category:$('new_cat').value};state.products.push(p); redraw();});
+  redraw();
+}
+
+function renderStockManager(){const b=$('editorBody'); b.innerHTML=`<h4>Magazyn - Szybkie korekty</h4><div id='stockList'></div><div style='margin-top:8px'><label>Dostawa (SKU / ilosc)</label><input id='deliveryInput'/><button id='applyDelivery' class='btn-ghost small'>Zastosuj</button></div>`;
+  const list=b.querySelector('#stockList'); function redraw(){list.innerHTML=''; state.products.forEach(p=>{const div=document.createElement('div');div.className='card small';div.style.marginBottom='6px';div.innerHTML=`<strong>${p.name}</strong><div class='muted small'>${p.stock} ${p.unit} • SKU:${p.sku}</div><div style='margin-top:6px'><button class='btn-ghost small' data-id='${p.id}'>Korekta</button></div>`; list.appendChild(div);}); list.querySelectorAll('[data-id]').forEach(x=>x.addEventListener('click',e=>{const id=e.target.dataset.id;const p=state.products.find(z=>z.id===id); const val=prompt('Nowy stan magazynowy dla '+p.name,p.stock); if(val!==null){p.stock=parseFloat(val)||0; redraw();}}));}
+  $('applyDelivery').addEventListener('click',()=>{const val=$('deliveryInput').value.trim();const parts=val.split('/'); if(parts.length<2){alert('Użyj formatu SKU/ilość');return;} const sku=parts[0].trim(), qty=parseFloat(parts[1])||0; const p=state.products.find(x=>x.sku===sku); if(!p){alert('Brak produktu o tym SKU');return;} p.stock += qty; redraw();}); redraw();
+}
+
+function renderClientsManager(){const b=$('editorBody'); b.innerHTML=`<div id='clientList'></div><div style='margin-top:8px'><h4>Dodaj klienta</h4><input id='client_name' placeholder='Nazwa'/><input id='client_phone' placeholder='tel'/><button id='addClient' class='btn-ghost small'>Dodaj</button></div>`; function redraw(){const list=b.querySelector('#clientList'); list.innerHTML=''; state.clients.forEach(c=>{const d=document.createElement('div');d.className='card small';d.style.marginBottom='6px';d.innerHTML=`<strong>${c.name}</strong><div class='muted small'>tel: ${c.phone||'-'} • pkt: ${c.points||0}</div>`; list.appendChild(d);});}
+  $('addClient').addEventListener('click',()=>{state.clients.push({id:'c'+Date.now(),name:$('client_name').value,phone:$('client_phone').value,points:0}); redraw();}); redraw();
+}
+
+function renderSuppliersManager(){const b=$('editorBody'); b.innerHTML=`<div id='supList'></div><div style='margin-top:8px'><h4>Dodaj dostawcę</h4><input id='sup_name' placeholder='Nazwa'/><input id='sup_phone' placeholder='tel'/><button id='addSup' class='btn-ghost small'>Dodaj</button></div>`; function redraw(){const list=b.querySelector('#supList'); list.innerHTML=''; state.suppliers.forEach(s=>{const d=document.createElement('div');d.className='card small';d.style.marginBottom='6px';d.innerHTML=`<strong>${s.name}</strong><div class='muted small'>tel: ${s.phone||'-'}</div>`; list.appendChild(d);});}
+  $('addSup').addEventListener('click',()=>{state.suppliers.push({id:'s'+Date.now(),name:$('sup_name').value,phone:$('sup_phone').value}); redraw();}); redraw();
+}
+
+function renderPromosManager(){const b=$('editorBody'); b.innerHTML=`<div id='promoList'></div><div style='margin-top:8px'><h4>Dodaj promocję</h4><input id='promo_name' placeholder='Nazwa'/><input id='promo_type' placeholder='np. %'/><input id='promo_val' placeholder='wartosc'/><button id='addPromo' class='btn-ghost small'>Dodaj</button></div>`; function redraw(){const list=b.querySelector('#promoList'); list.innerHTML=''; state.promos.forEach(p=>{const d=document.createElement('div');d.className='card small';d.style.marginBottom='6px';d.innerHTML=`<strong>${p.name}</strong><div class='muted small'>${p.type} ${p.value}</div>`; list.appendChild(d);});}
+  $('addPromo').addEventListener('click',()=>{state.promos.push({id:'pr'+Date.now(),name:$('promo_name').value,type:$('promo_type').value,value:$('promo_val').value}); redraw();}); redraw();
+}
+
+function renderPaymentsManager(){const b=$('editorBody'); b.innerHTML=`<div id='payList'></div><div style='margin-top:8px'><h4>Dodaj metodę płatności</h4><input id='pay_name' placeholder='Nazwa'/><button id='addPay' class='btn-ghost small'>Dodaj</button></div>`; function redraw(){const list=b.querySelector('#payList'); list.innerHTML=''; state.payments.forEach(p=>{const d=document.createElement('div');d.className='card small';d.style.marginBottom='6px';d.innerHTML=`<strong>${p.name}</strong> <button data-id='${p.id}' class='btn-ghost small'>Usuń</button>`; list.appendChild(d);}); list.querySelectorAll('[data-id]').forEach(x=>x.addEventListener('click',e=>{state.payments=state.payments.filter(z=>z.id!==e.target.dataset.id); redraw();}));}
+  $('addPay').addEventListener('click',()=>{state.payments.push({id:'pay'+Date.now(),name:$('pay_name').value}); redraw();}); redraw();
+}
+
+// settings & login
+$('openSettings').addEventListener('click',()=>{alert('Panel ustawień otwarty po kliknięciu Manage w prawej kolumnie lub edytuj lokalnie.');});
+$('loginBtn').addEventListener('click',()=>{const pass=$('pwd').value; if(pass==='1312'){document.body.removeChild($('loginModal'));} else {$('loginMsg').textContent='Nieprawidłowe hasło';}});
+
+// till controls
+$('openTillBtn').addEventListener('click',()=>{const v=prompt('Wpisz kwotę początkową kasy (zł)', '0'); if(v===null) return; state.till.open=true; state.till.cash=parseFloat(v)||0; $('tillState').textContent='Otwarte: '+state.till.cash.toFixed(2)+' zł'; $('openTillBtn').classList.add('hidden'); $('closeTillBtn').classList.remove('hidden'); save();});
+$('closeTillBtn').addEventListener('click',()=>{const v=prompt('Podaj kwotę w kasie na koniec (zł):',state.till.cash); state.till.open=false; state.till.cash=parseFloat(v)||0; $('tillState').textContent='Zamknięta'; $('openTillBtn').classList.remove('hidden'); $('closeTillBtn').classList.add('hidden'); save();});
+
+// new order
+$('newOrderBtn').addEventListener('click',()=>{currentOrder={items:[],discount:0}; renderCart();});
+
+// search
+$('productSearch').addEventListener('input',e=>{renderProducts(e.target.value);} );
+$('categoryFilter').addEventListener('change',e=>{if(e.target.value==='Wszystkie') renderProducts($('productSearch').value); else renderProducts(e.target.value);} )
+
+// quick add
+$('addQuickProduct').addEventListener('click',()=>{const name=prompt('Nazwa produktu'); if(!name) return; const price=parseFloat(prompt('Cena'))||0; const p={id:'p'+Date.now(),sku:'',name,price,stock:0,unit:'szt',category:'Ręcznie'}; state.products.push(p); renderProducts($('productSearch').value);});
+
+// export/import
+$('exportData').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({state,loyaltyConfig},null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='tgpos_maretti_export.json'; a.click();});
+$('importData').addEventListener('click',()=>{$('importFile').click();});
+$('importFile').addEventListener('change',e=>{const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{try{const o=JSON.parse(r.result); if(o.state){state=o.state;} if(o.loyaltyConfig) loyaltyConfig=o.loyaltyConfig; save(); alert('Zaimportowano'); location.reload();}catch(err){alert('Blad importu');}}; r.readAsText(f);});
+
+// clear
+$('clearAll').addEventListener('click',()=>{if(confirm('Usunąć wszystkie dane (nieodwracalne)?')){localStorage.removeItem(STORAGE_KEY);alert('Usunięto. Odśwież stronę.');}}
+);
+
+// loyalty settings
+$('saveLoyalty').addEventListener('click',()=>{const a=parseFloat($('pointsPerCurrency').value); const b=parseFloat($('currencyPerPoints').value); if(!isNaN(a)) loyaltyConfig.zlotyPer100Pts=a; if(!isNaN(b)) loyaltyConfig.centsPer100Pts=b; save(); alert('Zapisano');});
+$('pointsPerCurrency').value=loyaltyConfig.zlotyPer100Pts; $('currencyPerPoints').value=loyaltyConfig.centsPer100Pts;
+
+// init
+refreshCategoryFilter(); renderProducts(''); populatePaymentMethods(); renderCart();
+
+// remove login modal if user closes it manually
+window.addEventListener('load',()=>{ /* keep modal until correct pwd entered */ });
+
+</script>
+</body>
+</html>
